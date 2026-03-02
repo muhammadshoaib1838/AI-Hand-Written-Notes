@@ -32,6 +32,7 @@ st.markdown("""
         font-weight: bold !important;
         border: none !important;
         border-radius: 8px;
+        width: 100%;
     }
     
     .signature { color: #818cf8; text-align: center; margin-top: 50px; font-weight: bold; }
@@ -51,26 +52,5 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # --- Logic Functions ---
 def preprocess_image(uploaded_file):
-    # Fixed: Ensure file pointer is at start
     uploaded_file.seek(0)
-    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-    img = cv2.imdecode(file_bytes, 1)
-    if img is None: return None
-    # Standard grayscale for OCR
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    return gray
-
-def extract_text(img):
-    result = reader.readtext(img)
-    return " ".join([detection[1] for detection in result]) if result else ""
-
-def clean_notes(text):
-    if not client: return "❌ Missing Groq API Key in Secrets."
-    prompt = (
-        "Convert this OCR text into a professional document. "
-        "1. Use <h2 style='color:#818cf8;'> for headings. "
-        "2. Use <span style='color:#f472b6; font-weight:bold;'> for key terms. "
-        "3. Fix all grammar and format as high-quality study notes. "
-        "End with '--- END ---'."
-    )
-    completion =
+    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.
