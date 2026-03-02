@@ -42,7 +42,7 @@ st.markdown("""
 # --- Init OCR & API ---
 @st.cache_resource
 def load_ocr():
-    # Note: gpu=False for Streamlit Cloud as they don't provide GPUs on free tier
+    # gpu=False is required for Streamlit Cloud Free Tier
     return easyocr.Reader(['en'], gpu=False)
 
 reader = load_ocr()
@@ -51,49 +51,33 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # --- Logic Functions ---
 def process_pipeline(uploaded_file):
-    # 1. OCR Stage
-    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-    img = cv2.imdecode(file_bytes, 1)
-    
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    processed_img = cv2.adaptiveThreshold(
-        cv2.GaussianBlur(gray, (5, 5), 0),
-        255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY, 11, 2
-    )
-    
-    raw_text = " ".join(reader.readtext(processed_img, detail=0))
-    
-    if not raw_text.strip():
-        return None, None, None
-
-    # 2. AI Structuring Stage
-    prompt = (
-        "Act as a Professional Document Architect. "
-        "Convert this OCR text into a beautiful digital document: "
-        "- Use # for the Main Title "
-        "- Use ## for Section Headings "
-        "- Use bolding (**) for important technical terms "
-        "- End with a section titled '--- FINAL SUMMARY ---' "
-        f"TEXT: {raw_text}"
-    )
-
-    completion = client.chat.completions.create(
-        messages=[{"role": "user", "content": prompt}],
-        model="llama-3.3-70b-versatile"
-    )
-    
-    full_output = completion.choices[0].message.content
-    
-    if "--- FINAL SUMMARY ---" in full_output:
-        blueprint, summary = full_output.split("--- FINAL SUMMARY ---")
-    else:
-        blueprint, summary = full_output, "Summary included in main text."
+    try:
+        # 1. OCR Stage
+        uploaded_file.seek(0)
+        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+        img = cv2.imdecode(file_bytes, 1)
         
-    return raw_text, blueprint.strip(), summary.strip()
+        if img is None:
+            return None, None, None
 
-# --- Main UI ---
-st.title("🌌 Document Architect Pro")
-st.write("Convert image-based notes into structured professional documents.")
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        processed_img = cv2.adaptiveThreshold(
+            cv2.GaussianBlur(gray, (5, 5), 0),
+            255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY, 11, 2
+        )
+        
+        raw_text = " ".join(reader.readtext(processed_img, detail=0))
+        
+        if not raw_text.strip():
+            return "No text detected", None, None
 
-if
+        # 2. AI Structuring Stage
+        if not client:
+            return raw_text, "Error: API Key missing", "N/A Bird"
+
+        prompt = (
+            "Act as a Professional Document Architect. "
+            "Convert this OCR text into a beautiful digital document: "
+            "- Use # for the Main Title "
+            "- Use
